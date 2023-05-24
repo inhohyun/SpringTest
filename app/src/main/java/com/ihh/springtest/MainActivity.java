@@ -1,20 +1,22 @@
 package com.ihh.springtest;
+
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,43 +39,40 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String text = editText.getText().toString();
-                sendTextToServer(text);
+                sendStringToServer(text);
             }
         });
     }
 
-    private void sendTextToServer(String text) {
+    private void sendStringToServer(String inputString) {
+        // Create a request object
+        StringRequest request = new StringRequest(inputString);
 
-        if (retrofit == null){
-            Gson gson = new GsonBuilder()
-                    .setLenient()
-                    .create();
+        // Create an instance of the Retrofit API service
+        ApiService apiService = RetrofitClient.getApiService();
 
-             retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create(gson))
-                    .build();
-        }
-
-        ApiService apiService = retrofit.create(ApiService.class);
-
-//        TextRequest textRequest = new TextRequest(text);
-
-        Call<String> call = apiService.sendText(text);
-        call.enqueue(new Callback<String>() {
+        // Make the network request
+        Call<StringResponse> call = apiService.processString(request);
+        call.enqueue(new Callback<StringResponse>() {
             @Override
-            public void onResponse(Call<String> call, Response<String> response) {
+            public void onResponse(Call<StringResponse> call, Response<StringResponse> response) {
                 if (response.isSuccessful()) {
-                    String receivedText = response.body();
-                    responseTextView.setText(receivedText);
+                    // Retrieve the response body
+                    StringResponse stringResponse = response.body();
+                    if (stringResponse != null) {
+                        // Display the result
+                        responseTextView.setText(stringResponse.getResult());
+                    } else {
+                        Toast.makeText(MainActivity.this, "Invalid response from server", Toast.LENGTH_SHORT).show();
+                    }
                 } else {
-                    responseTextView.setText("Request Failed1: " + response.message());
+                    Toast.makeText(MainActivity.this, "Request failed with code: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<String> call, Throwable t) {
-                responseTextView.setText("Request Failed2: " + t.getMessage());
+            public void onFailure(Call<StringResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Request failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
